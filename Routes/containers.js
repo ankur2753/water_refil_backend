@@ -1,41 +1,36 @@
 const router = require("express").Router();
 const connection = require("../connectDB");
-const { body, validationResult } = require("express-validator");
+const { body, header, validationResult } = require("express-validator");
+
+// add check for req.id is an employee
 
 router.post(
   "/addNew",
-  [
-    body("container_id").isInt().notEmpty(),
-    body("quantity").isInt().notEmpty(),
-    body("currentOwner").isInt().notEmpty(),
-    body("unitPrice").isInt().notEmpty(),
-  ],
+  [body("quantity").isInt().notEmpty(), body("unitPrice").isInt().notEmpty()],
   (req, res) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
+      if (req.isCustomer)
+        return res
+          .status(403)
+          .json({ msg: "customer cannot add new containers" });
       connection.query(
-        "insert into CONTAINERS VALUES (?,?,?,?);",
-        [
-          req.body.container_id,
-          req.body.quantity,
-          req.body.unitPrice,
-          req.body.currentOwner,
-        ],
+        "insert into CONTAINERS(quantity,unitPrice,currentOwner) VALUES (?,?,?);",
+        [req.body.quantity, req.body.unitPrice, req.id],
         (error, results, fields) => {
           if (error) {
             console.log(error);
-            return res.status(404).json({ errors: error.sqlMessage });
+            return res.status(404).json({ error: error.code });
           }
           if (results.length > 0) {
             console.log(`info updated for container_id : ${req.body.user_id}`);
             return res.send(results[0]);
           }
           if (fields) console.log(fields);
-          console.log(`added new Container with id: ${req.body.container_id}`);
+          console.log(`added new Container for user with id: ${req.id}`);
           return res.send({ Success: "added new Container" });
         }
       );
@@ -46,7 +41,7 @@ router.post(
   }
 );
 
-router.get("/", [body("container_id").isInt().notEmpty()], (req, res) => {
+router.get("/", [header("container_id").isInt().notEmpty()], (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -55,16 +50,16 @@ router.get("/", [body("container_id").isInt().notEmpty()], (req, res) => {
 
     connection.query(
       "select * from CONTAINERS where ID = ?; ",
-      [req.body.container_id],
+      [req.headers.container_id],
       (error, results, fields) => {
         if (error) {
           console.log("HERE");
           console.log(error);
-          return res.status(404).json({ errors: error });
+          return res.status(404).json({ error: error.code });
         }
         if (results.length > 0) {
           console.log(
-            `info requested for container_id : ${req.body.container_id}`
+            `info requested for container_id : ${req.headers.container_id}`
           );
           return res.send(results[0]);
         }
@@ -78,29 +73,38 @@ router.get("/", [body("container_id").isInt().notEmpty()], (req, res) => {
   }
 });
 
-router.get("/spare", (req, res) => {
-  try {
-    connection.query(
-      "select * from CONTAINERS  where CURRENTOWNER IN (SELECT USERID AS CURRENTOWNER FROM EMPLOYEE);",
-      [req.body.container_id],
-      (error, results, fields) => {
-        if (error) {
-          console.log("HERE");
-          console.log(error);
-          return res.status(404).json({ errors: error });
-        }
-        if (results.length > 0) {
-          console.log(`info requested for spare containers`);
-          return res.send(results);
-        }
-        if (fields) console.log(fields);
-        return res.send({ error: "NO container  found" });
+router.get(
+  "/spare",
+  [header("employee_id").notEmpty().exists()],
+  (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
       }
-    );
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({ error: error.message });
+      connection.query(
+        "select id,quantity,unitPrice from CONTAINERS  where CURRENTOWNER =? and isBooked =false",
+        [req.headers.employee_id],
+        (error, results) => {
+          if (error) {
+            console.log("HERE");
+            console.log(error);
+            return res.status(404).json({ error: error.code });
+          }
+          if (results.length > 0) {
+            console.log(
+              `info requested for spare containers under ${req.headers.emp_name}`
+            );
+            return res.send(results);
+          }
+          return res.send({ error: "NO container  found" });
+        }
+      );
+    } catch (error) {
+      console.error(error);
+      res.status(500).send({ error: error.message });
+    }
   }
-});
+);
 
 module.exports = router;

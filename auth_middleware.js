@@ -9,8 +9,10 @@ module.exports = function (req, res, next) {
     if (err) {
       console.log(err);
       return res.status(403).json({ msg: "invalid Token acces denied" });
+    } else {
+      req.id = payload.id;
+      req.isCustomer = payload.isCustomer;
+      next();
     }
-    req.id = payload.id;
   });
-  next();
 };

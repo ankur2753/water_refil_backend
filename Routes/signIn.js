@@ -6,7 +6,7 @@ const connection = require("../connectDB");
 const { body, validationResult } = require("express-validator");
 require("dotenv").config();
 
-router.get(
+router.post(
   "/",
   [body("username").notEmpty(), body("password").notEmpty()],
   (req, res) => {
@@ -20,22 +20,26 @@ router.get(
       let req_password = sql.escape(req.body.password);
       // retrive salt and password from db and then check the password
       connection.query(
-        "select PASSWORD, ID from USER  where USERNAME = ?",
+        "select PASSWORD, ID,isCustomer from USER  where USERNAME = ?",
         [req_username],
-        (error, results, fields) => {
+        (error, results) => {
           if (error) {
             console.log(error);
-            return res.status(404).json({ errors: error.sqlMessage });
+            return res.status(404).json({ error: error.code });
           }
           if (results.length > 0) {
             console.log("user_id :" + results[0].ID + " has LOGGED IN...");
             if (!bcrypt.compareSync(req_password, results[0].PASSWORD)) {
-              return res.status(403).json({ error: "invalid credentials" });
+              return res.status(401).json({ error: "invalid credentials" });
             } else
               return res.status(200).json({
                 success: "password matched",
+                isCustomer: results[0].isCustomer ? true : false,
                 token: jwt.sign(
-                  { id: results[0].ID },
+                  {
+                    id: results[0].ID,
+                    isCustomer: results[0].isCustomer ? true : false,
+                  },
                   process.env.JWT_SECRET_KEY,
                   {
                     expiresIn: "15m",
@@ -43,7 +47,6 @@ router.get(
                 ),
               });
           }
-          if (fields) console.log(fields);
 
           return res.send({ error: "user not found" });
         }
@@ -54,5 +57,23 @@ router.get(
     }
   }
 );
+
+// router.post(
+//   "/getToken",
+//   [body("refreshToken").exists()],
+//   (request, response) => {
+//     try {
+//       const errors = validationResult(req);
+//       if (!errors.isEmpty()) {
+//         return res.status(400).json({ errors: errors.array() });
+//       }
+//       // verify refresh token
+//       // genrate new refresh token and access token
+//     } catch (error) {
+//       console.error(error);
+//       res.status(500).send({ error: error.message });
+//     }
+//   }
+// );
 
 module.exports = router;

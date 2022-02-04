@@ -2,6 +2,7 @@ const router = require("express").Router();
 const sql = require("mysql");
 const bcrypt = require("bcryptjs");
 const connection = require("../connectDB");
+const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 require("dotenv").config();
 
@@ -32,15 +33,24 @@ router.post(
           if (error) {
             console.error(error);
             response.statusCode = 400;
-            response.send({ error: error.message });
+            response.send({ error: error.code });
           }
           if (results) {
             connection.query("SELECT LAST_INSERT_ID() as ID;", (err, res) => {
-              if (err) response.status(500).json({ err });
+              if (err) response.status(500).json({ error: error.code });
               if (res)
                 response.json({
                   success: "new user created successfully",
-                  id: res[0].ID,
+                  token: jwt.sign(
+                    {
+                      id: res[0].ID,
+                      isCustomer: request.body.isCustomer,
+                    },
+                    process.env.JWT_SECRET_KEY,
+                    {
+                      expiresIn: "15m",
+                    }
+                  ),
                 });
             });
           }
@@ -53,150 +63,4 @@ router.post(
   }
 );
 
-router.post(
-  "/customerProfile",
-  [
-    body("user_id").isInt().notEmpty(),
-    body("email").isEmail(),
-    body("fname").isString(),
-    body("mname").isString(),
-    body("lname").isString(),
-    body("city").isString(),
-    body("state").isString(),
-    body("street").isString(),
-    body("country").isString(),
-    body("phone").isMobilePhone(),
-  ],
-  (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ error: errors.array() });
-      }
-
-      // sanitize for sql
-      // check what values are present in the request body
-      let {
-        user_id,
-        email,
-        fname,
-        mname,
-        lname,
-        city,
-        street,
-        state,
-        country,
-        phone,
-      } = req.body;
-      let query =
-        "insert into CUSTOMER (USERID,EMAIL,FNAME,MNAME,LNAME,CITY,STREET,COUNTRY,PHONE,STATE)  values (?,?,?,?,?,?,?,?,?,?)";
-      // insert into user_info
-      connection.query(
-        query,
-        [
-          user_id,
-          email,
-          fname,
-          mname,
-          lname,
-          city,
-          street,
-          country,
-          phone,
-          state,
-        ],
-        (error, results, fields) => {
-          if (error) return res.status(500).json({ error });
-          if (results) {
-            console.log("new profile created for user_id:" + user_id);
-            return res.json({
-              success: "user profile created successfully",
-              results,
-            });
-          }
-          if (fields) console.log(fields);
-        }
-      );
-      // return jwt token if success
-      // return res.send(req.body);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
-
-router.post(
-  "/employeeProfile",
-  [
-    body("user_id").isInt().notEmpty(),
-    body("email").isEmail(),
-    body("fname").isString(),
-    body("mname").isString(),
-    body("lname").isString(),
-    body("city").isString(),
-    body("state").isString(),
-    body("street").isString(),
-    body("country").isString(),
-    body("phone").isMobilePhone(),
-    body("salary").isInt(),
-  ],
-  (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ error: errors.array() });
-      }
-
-      // sanitize for sql
-      // check what values are present in the request body
-      let {
-        user_id,
-        email,
-        fname,
-        mname,
-        lname,
-        city,
-        street,
-        state,
-        country,
-        phone,
-        salary,
-      } = req.body;
-      let query =
-        "insert into employee (USERID,EMAIL,FNAME,MNAME,LNAME,CITY,STREET,COUNTRY,PHONE,STATE,SALARY)  values (?,?,?,?,?,?,?,?,?,?,?)";
-      // insert into user_info
-      connection.query(
-        query,
-        [
-          user_id,
-          email,
-          fname,
-          mname,
-          lname,
-          city,
-          street,
-          country,
-          phone,
-          state,
-          salary,
-        ],
-        (error, results, fields) => {
-          if (error) return res.status(500).json({ error });
-          if (results) {
-            console.log("new profile created for user_id:" + user_id);
-            return res.json({
-              success: "user profile created successfully",
-              results,
-            });
-          }
-          if (fields) console.log(fields);
-        }
-      );
-      // return jwt token if success
-      // return res.send(req.body);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
 module.exports = router;
