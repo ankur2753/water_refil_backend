@@ -4,7 +4,7 @@ const { body, validationResult } = require("express-validator");
 
 router.get("/", (request, response) => {
   try {
-    console.log(request.isCustomer);
+    console.log("isCutomer ", request.isCustomer);
     if (request.isCustomer)
       connection.query(
         "SELECT * FROM CUSTOMER where USERID = ?",
@@ -33,9 +33,9 @@ router.get("/", (request, response) => {
           }
           if (results.length > 0) {
             console.log(`info requested for user_id : ${request.id}`);
-            return response.send(results[0]);
+            return response.send(results);
           }
-
+          console.log(results[0]);
           return response.send({ error: "user is not an  employee" });
         }
       );

@@ -20,7 +20,7 @@ router.post(
       let req_password = sql.escape(req.body.password);
       // retrive salt and password from db and then check the password
       connection.query(
-        "select PASSWORD, ID,isCustomer from USER  where USERNAME = ?",
+        "select password, id,isCustomer from USER  where username = ?",
         [req_username],
         (error, results) => {
           if (error) {
@@ -28,8 +28,8 @@ router.post(
             return res.status(404).json({ error: error.code });
           }
           if (results.length > 0) {
-            console.log("user_id :" + results[0].ID + " has LOGGED IN...");
-            if (!bcrypt.compareSync(req_password, results[0].PASSWORD)) {
+            console.log("user_id :" + results[0].id + " has LOGGED IN...");
+            if (!bcrypt.compareSync(req_password, results[0].password)) {
               return res.status(401).json({ error: "invalid credentials" });
             } else
               return res.status(200).json({
@@ -37,7 +37,7 @@ router.post(
                 isCustomer: results[0].isCustomer ? true : false,
                 token: jwt.sign(
                   {
-                    id: results[0].ID,
+                    id: results[0].id,
                     isCustomer: results[0].isCustomer ? true : false,
                   },
                   process.env.JWT_SECRET_KEY,

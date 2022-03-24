@@ -49,7 +49,7 @@ router.get("/", [header("container_id").isInt().notEmpty()], (req, res) => {
     }
 
     connection.query(
-      "select * from CONTAINERS where ID = ?; ",
+      "select * from CONTAINERS where id = ?; ",
       [req.headers.container_id],
       (error, results, fields) => {
         if (error) {
@@ -83,7 +83,7 @@ router.get(
         return res.status(400).json({ errors: errors.array() });
       }
       connection.query(
-        "select id,quantity,unitPrice from CONTAINERS  where CURRENTOWNER =? and isBooked =false",
+        "select id, quantity,unitPrice from CONTAINERS  where currentOwner =? and isBooked =false",
         [req.headers.employee_id],
         (error, results) => {
           if (error) {
